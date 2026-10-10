@@ -1,0 +1,53 @@
+name: Render butterfly-life
+
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: Render workers
+        default: '2'
+      scale:
+        description: Render scale (1 = 1080x1920)
+        default: '1'
+      crf:
+        description: x264 CRF
+        default: '16'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install tool dependencies
+        run: npm install --prefix examples/butterfly-life/tools
+
+      - name: Install Chromium
+        run: npx --prefix examples/butterfly-life/tools playwright install --with-deps chromium
+
+      - name: Run checks
+        run: node examples/butterfly-life/tools/check.cjs
+
+      - name: Render MP4
+                               xamples/butterfly-life/tools/render.cjs \
+            --workers "${{ inputs.workers }}" \
+            --scale "${{ inputs.scale }}" \
+            --crf "${{ inputs.crf }}"
+
+      - name: Upload MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: butterfly-life-mp4
+          path: examples/butterfly-life/exports/butterfly-life.mp4
+          if-no-files-found: error
+          retention-days: 7
