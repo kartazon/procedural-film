@@ -1,8 +1,11 @@
-name: Render butterfly-life
+name: Render film
 
 on:
   workflow_dispatch:
     inputs:
+      project:
+        description: Folder name in examples/
+        default: butterfly-life
       workers:
         description: Render workers
         default: '2'
@@ -24,23 +27,26 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Check project exists
+        run: test -d "examples/${{ inputs.project }}/tools"
+
       - name: Install ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Install tool dependencies
-        run: npm install --prefix examples/butterfly-life/tools
+        run: npm install --prefix "examples/${{ inputs.project }}/tools"
 
       - name: Install Chromium
-        run: npx --prefix examples/butterfly-life/tools playwright install --with-deps chromium
+        run: npx --prefix "examples/${{ inputs.project }}/tools" playwright install --with-deps chromium
 
       - name: Run checks
-        run: node examples/butterfly-life/tools/check.cjs
+        run: node "examples/${{ inputs.project }}/tools/check.cjs"
 
       - name: Render MP4
         run: |
-          node examples/butterfly-life/tools/render.cjs \
+          node "examples/${{ inputs.project }}/tools/render.cjs" \
             --workers "${{ inputs.workers }}" \
             --scale "${{ inputs.scale }}" \
             --crf "${{ inputs.crf }}"
@@ -48,7 +54,7 @@ jobs:
       - name: Upload MP4
         uses: actions/upload-artifact@v4
         with:
-          name: butterfly-life-mp4
-          path: examples/butterfly-life/exports/butterfly-life.mp4
+          name: ${{ inputs.project }}-mp4
+          path: examples/${{ inputs.project }}/exports/*.mp4
           if-no-files-found: error
           retention-days: 7
