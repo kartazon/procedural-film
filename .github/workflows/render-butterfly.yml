@@ -39,7 +39,8 @@ jobs:
         run: node examples/butterfly-life/tools/check.cjs
 
       - name: Render MP4
-                               xamples/butterfly-life/tools/render.cjs \
+        run: |
+          node examples/butterfly-life/tools/render.cjs \
             --workers "${{ inputs.workers }}" \
             --scale "${{ inputs.scale }}" \
             --crf "${{ inputs.crf }}"
