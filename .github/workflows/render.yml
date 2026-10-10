@@ -7,39 +7,53 @@ on:
         description: "Папка примера"
         default: "butterfly-life"
         required: true
+      preview:
+        description: "Быстрый превью-рендер (5 сек, половинный размер)"
+        type: boolean
+        default: true
 
 jobs:
   render:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      EX: examples/${{ inputs.example }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install deps
-        working-directory: examples/${{ inputs.example }}/tools
-        run: npm install
+        working-directory: ${{ env.EX }}/tools
+        run: npm ci || npm install
 
       - name: Install Chromium
-        working-directory: examples/${{ inputs.example }}/tools
+        working-directory: ${{ env.EX }}/tools
         run: npx playwright install --with-deps chromium
 
       - name: Check
-        run: node examples/${{ inputs.example }}/tools/check.cjs
+        run: node $EX/tools/check.cjs
 
-      # TODO: подставить реальную команду рендера MP4 из репозитория
-      - name: Render
-        run: echo "render command here"
+      - name: Build HTML player
+        run: node $EX/tools/build.cjs
 
-      - uses: actions/upload-artifact@v4
+      - name: Render preview
+        if: ${{ inputs.preview }}
+        run: node $EX/tools/render.cjs --from 4 --to 9 --scale 0.5 --out exports/preview.mp4
+
+      - name: Render full film
+        if: ${{ !inputs.preview }}
+        run: node $EX/tools/render.cjs --workers 2
+
+      - uses: actions/upload-artifact@v5
         with:
           name: film-${{ inputs.example }}
           path: |
-            examples/${{ inputs.example }}/**/*.mp4
-            examples/${{ inputs.example }}/**/*.html
+            ${{ env.EX }}/dist/*.html
+            ${{ env.EX }}/exports/*.mp4
+          if-no-files-found: error
